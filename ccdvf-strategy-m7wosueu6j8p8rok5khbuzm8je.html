@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude に問題集を作らせて資格試験に受かる</title>
+<style>*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,svg{max-width:100%;height:auto}button,input,select,textarea{font:inherit;color:inherit}</style>
+</head>
+<body>
+<style>
+  :root{
+    --paper:#F6F7F5; --surface:#FFFFFF; --surface2:#EFF2EF;
+    --ink:#17201E; --muted:#5C6B67; --faint:#8A9793;
+    --accent:#0E5B63; --accent-soft:#DDEEEF; --accent-ink:#0A4048;
+    --mark:#B0761A; --mark-soft:#F3E7D2; --bad:#A8323A;
+    --line:#DDE3E0; --line-strong:#C6CFCB;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic Medium","Noto Sans JP",Meiryo,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#121614; --surface:#1A211F; --surface2:#212A27;
+      --ink:#E9EDEA; --muted:#9AA7A2; --faint:#78857F;
+      --accent:#4FB8C4; --accent-soft:#12363A; --accent-ink:#8FD8E0;
+      --mark:#E0AC55; --mark-soft:#33260F; --bad:#E2757C;
+      --line:#2A3330; --line-strong:#3A4441;
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#F6F7F5; --surface:#FFFFFF; --surface2:#EFF2EF;
+    --ink:#17201E; --muted:#5C6B67; --faint:#8A9793;
+    --accent:#0E5B63; --accent-soft:#DDEEEF; --accent-ink:#0A4048;
+    --mark:#B0761A; --mark-soft:#F3E7D2; --bad:#A8323A;
+    --line:#DDE3E0; --line-strong:#C6CFCB;
+  }
+  :root[data-theme="dark"]{
+    --paper:#121614; --surface:#1A211F; --surface2:#212A27;
+    --ink:#E9EDEA; --muted:#9AA7A2; --faint:#78857F;
+    --accent:#4FB8C4; --accent-soft:#12363A; --accent-ink:#8FD8E0;
+    --mark:#E0AC55; --mark-soft:#33260F; --bad:#E2757C;
+    --line:#2A3330; --line-strong:#3A4441;
+  }
+
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.85;
+       -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 22px 90px;}
+
+  /* ---- masthead ---- */
+  .eyebrow{font-family:var(--mono);font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:12px;}
+  h1{font-family:var(--serif);font-size:2.1rem;font-weight:600;line-height:1.25;
+     letter-spacing:.01em;text-wrap:balance;margin-bottom:18px;}
+  .stats{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:11px;
+    overflow:hidden;background:var(--surface);margin:0 0 22px;}
+  .stat{flex:1 1 150px;padding:14px 18px;border-right:1px solid var(--line);}
+  .stat:last-child{border-right:0;}
+  .stat b{display:block;font-family:var(--mono);font-size:1.4rem;font-weight:600;
+    letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.2;}
+  .stat span{font-size:.72rem;color:var(--faint);letter-spacing:.06em;}
+  .lede{font-size:1rem;color:var(--muted);margin:0 0 6px;}
+
+  /* ---- sections ---- */
+  h2{font-family:var(--serif);font-size:1.42rem;font-weight:600;margin:52px 0 4px;
+     padding-top:24px;border-top:1px solid var(--line);text-wrap:balance;}
+  h2 .num{font-family:var(--mono);font-size:.7rem;font-weight:400;letter-spacing:.14em;
+     color:var(--faint);display:block;margin-bottom:6px;}
+  h3{font-size:1.02rem;font-weight:600;margin:30px 0 4px;}
+  p{margin:10px 0;}
+  ul,ol{margin:10px 0 10px 1.25em;}
+  li{margin:6px 0;}
+  code{font-family:var(--mono);font-size:.85em;background:var(--surface2);
+    padding:1px 5px;border-radius:4px;}
+  strong{font-weight:600;}
+  em{font-style:normal;color:var(--accent-ink);font-weight:600;}
+
+  /* ---- the loop ---- */
+  .loop{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:20px 18px;margin:22px 0;}
+  .loop h4{font-family:var(--mono);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--faint);font-weight:400;margin-bottom:14px;}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;}
+  .node{font-family:var(--mono);font-size:.78rem;line-height:1.4;padding:8px 12px;
+    border-radius:7px;background:var(--surface2);border:1px solid var(--line);white-space:nowrap;}
+  .node.src{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:600;}
+  .node.out{background:var(--mark-soft);border-color:var(--mark);font-weight:600;}
+  .arw{font-family:var(--mono);font-size:.8rem;color:var(--mark);flex:none;}
+  .loopnote{font-size:.82rem;color:var(--muted);margin:14px 0 0;}
+
+  /* ---- numbered steps ---- */
+  .step{position:relative;padding-left:64px;margin:34px 0;}
+  .step .n{position:absolute;left:0;top:2px;font-family:var(--mono);font-size:1.55rem;
+    font-weight:600;color:var(--mark);letter-spacing:-.02em;line-height:1;
+    font-variant-numeric:tabular-nums;}
+  .step h3{margin-top:0;}
+  @media (max-width:560px){
+    .step{padding-left:0;}
+    .step .n{position:static;display:block;font-size:1.1rem;margin-bottom:4px;}
+  }
+
+  /* ---- callouts ---- */
+  .box{background:var(--surface);border:1px solid var(--line);border-left:2px solid var(--accent);
+    border-radius:0 10px 10px 0;padding:15px 18px;margin:20px 0;}
+  .box.mark{border-left-color:var(--mark);}
+  .box h4{font-family:var(--mono);font-size:.64rem;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--faint);font-weight:400;margin-bottom:6px;}
+  .box p:last-child{margin-bottom:0;}
+
+  ol.principles{counter-reset:pr;list-style:none;margin:18px 0 18px 0;padding:0;}
+  ol.principles li{counter-increment:pr;position:relative;padding-left:46px;margin:20px 0;
+    font-size:.93rem;color:var(--muted);line-height:1.8;}
+  ol.principles li::before{content:counter(pr);position:absolute;left:0;top:1px;
+    font-family:var(--mono);font-size:.72rem;font-weight:600;
+    width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;
+    background:var(--accent-soft);color:var(--accent-ink);}
+  ol.principles b{display:block;font-size:1rem;font-weight:600;color:var(--ink);margin-bottom:2px;}
+  .pull{font-family:var(--serif);font-size:1.24rem;line-height:1.55;color:var(--ink);
+    border-left:3px solid var(--mark);padding:4px 0 4px 18px;margin:22px 0;text-wrap:balance;}
+
+  /* ---- tables ---- */
+  .tblwrap{overflow-x:auto;margin:18px 0;}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;background:var(--surface);}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-family:var(--mono);font-size:.62rem;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--faint);font-weight:400;background:var(--surface2);}
+  td.n{font-family:var(--mono);font-size:.82rem;white-space:nowrap;
+    font-variant-numeric:tabular-nums;color:var(--muted);}
+
+  .domains{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0 20px;
+    font-size:.85rem;margin:14px 0;}
+  .domains div{display:flex;justify-content:space-between;gap:12px;
+    border-bottom:1px solid var(--line);padding:7px 0;}
+  .domains b{font-family:var(--mono);font-size:.8rem;font-weight:600;
+    font-variant-numeric:tabular-nums;flex:none;}
+
+  footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:.78rem;color:var(--faint);line-height:1.8;}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">社内共有 · 資格試験の対策方法</p>
+  <h1>Claude に問題集を作らせて資格試験に受かる</h1>
+
+  <div class="stats">
+    <div class="stat"><b>924<span style="font-size:.9rem;color:var(--faint)"> / 1000</span></b><span>スコア（合格ライン 720）</span></div>
+    <div class="stat"><b>6日</b><span>準備期間</span></div>
+    <div class="stat"><b>211問</b><span>Claude に作らせた問題数</span></div>
+  </div>
+
+  <p class="lede">Claude Certified Developer – Foundations（CCDV-F）に合格しました。市販の問題集も対策講座も無い新しい資格だったので、<strong>公式ガイドを一次情報として Claude に問題集を作らせ、それを解いて回す</strong>という方法を取りました。</p>
+  <p class="lede">ここに書く手順は CCDV-F 固有のものではなく、<strong>他の資格試験でもそのまま使えます</strong>。</p>
+
+  <h2><span class="num">Section 0</span>前提（私の場合）</h2>
+  <ul>
+    <li>本業は開発。<strong>エージェントの実装経験はそれほど多くない</strong></li>
+    <li><strong>Haiku / Sonnet / Opus を業務で使ったことがある</strong></li>
+    <li>業務を通じて「<strong>コンテキストをうまく扱わないと挙動がおかしくなる</strong>」という感覚は持っていた</li>
+    <li><strong>Skill の作り方、CLAUDE.md の編集、それらがどのタイミングで読み込まれるか</strong>は分かっていた</li>
+    <li><strong>MCP サーバーの連携方法</strong>（設定して繋ぐところ）は分かっていた</li>
+    <li>事前知識としてはその程度</li>
+  </ul>
+  <p>Developer 試験は、プロンプトの巧拙ではなく<strong>ソフトウェアエンジニアリングの能力</strong>を測る試験だと感じています。</p>
+  <p>公式 Exam Guide の出題範囲を読むと、<strong>Claude 固有の知識だけで解ける部分はむしろ少数派</strong>です。大まかに3層に分かれます。</p>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>層</th><th>例</th><th>目安</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>AI ですらない、<br>一般的なソフトウェア工学</strong></td>
+          <td>REST API、JSON、非同期処理、バージョン管理、コードレビュー、要件定義、システムライフサイクル</td>
+          <td class="n">約2割</td>
+        </tr>
+        <tr>
+          <td><strong>LLM・エージェント一般</strong><br><span style="font-size:.9em;color:var(--muted)">他社のモデルでも通用する</span></td>
+          <td>コンテキスト管理、プロンプト設計、出力の検証、エージェントの設計パターン、プロンプトインジェクション対策、シークレット管理</td>
+          <td class="n">約4割</td>
+        </tr>
+        <tr>
+          <td><strong>Claude / Anthropic 固有</strong></td>
+          <td>Messages API の仕様、Claude Code、CLAUDE.md、Skills、モデルの使い分け</td>
+          <td class="n">約3割</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>たとえば <code>Context Engineering</code>（3.8%）で問われるコンテキストの肥大やドリフトへの対処は、<strong>Claude に限らず LLM を使うなら共通の課題</strong>です。<code>Agent Patterns and Frameworks</code>（4.9%）に至っては、<em>LangGraph や PydanticAI といった他社のフレームワーク名</em>まで挙がっています。</p>
+  <p style="font-size:.84rem;color:var(--faint);">※ この3層の分類は公式のものではなく、サブスキルの説明文を読んだ私の解釈です。割合も概算です。</p>
+
+  <h2><span class="num">Section 1</span>中心にある考え方</h2>
+  <p class="pull">教材を読むのではなく、教材を作らせて解く。</p>
+  <p>新しい資格には問題集がありません。しかし<strong>公式 Exam Guide の PDF には、出題範囲がサブスキル単位の配点付きで載っています</strong>。これを Claude に渡せば、配点どおりの問題を必要なだけ生成できます。</p>
+  <p>読むだけの学習と違って、<strong>どこを落とすかが数字で出る</strong>ので、次に何をやるかを迷わずに決められます。</p>
+
+  <div class="loop">
+    <h4>回すループ</h4>
+    <div class="flow">
+      <span class="node src">公式PDF</span><span class="arw">→</span>
+      <span class="node">配点どおりに問題を生成</span><span class="arw">→</span>
+      <span class="node out">HTMLで解ける形に</span><span class="arw">→</span>
+      <span class="node">解く</span><span class="arw">→</span>
+      <span class="node">集計</span><span class="arw">→</span>
+      <span class="node">弱点に絞って追加生成</span><span class="arw">→</span>
+      <span class="node out">復習ノート</span>
+    </div>
+    <p class="loopnote">生成・作り直し・解説の補強・英単語のまとめ・原則の抽出・復習ノートまで、<strong>すべて Claude に投げています</strong>。人間がやるのは「解く」と「不便なところを言う」だけです。</p>
+  </div>
+
+  <h2><span class="num">Section 2</span>実際の手順</h2>
+
+  <div class="step">
+    <span class="n">01</span>
+    <h3>公式 PDF を一次情報にして問題を生成させる</h3>
+    <p>Anthropic Partner Academy から公式 Exam Guide の PDF を入手し、Claude に読ませて問題を作らせました。</p>
+    <p>重要なのは、PDF に<strong>ドメイン配点だけでなく「25個のサブスキル」の個別配点</strong>が載っていた点です。これに従って問題数を配分させることで、範囲の偏りが無くなります。</p>
+    <div class="box mark">
+      <h4>ドメイン名に騙されない</h4>
+      <p>Model Selection というドメインは 16.8% ありますが、そのうち「Opus / Sonnet / Haiku の使い分け」は <strong>2.7% しかありません</strong>。残りは LLM の基礎と SDK・HTTP の基礎です。<em>サブスキルの粒度まで見ないと、ここを読み違えます。</em></p>
+    </div>
+  </div>
+
+  <div class="step">
+    <span class="n">02</span>
+    <h3>Opus に作らせて、HTML の問題集として出力させる</h3>
+    <p><strong>Claude Desktop で Opus に依頼</strong>し、成果物を<strong>単体で動く HTML ファイル1枚</strong>として出力させました。</p>
+    <ul>
+      <li>ブラウザで開くだけで動く。サーバーもネット接続も不要</li>
+      <li>解答の記録がブラウザに保存され、続きから再開できる</li>
+    </ul>
+    <p>「問題をテキストで列挙して」ではなく「<strong>解ける形の HTML にして</strong>」と頼むのが要点です。単なる文章より圧倒的に回しやすくなります。</p>
+  </div>
+
+  <div class="step">
+    <span class="n">03</span>
+    <h3>使いながら機能を足していく</h3>
+    <p>最初から完成形を作らせず、<strong>解いていて不便だと思った点をその都度直させました</strong>。</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>追加した機能</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td>表は英語の設問と選択肢、裏は日本語訳と解説</td><td>本番は英語のみ。英語で解き、日本語で確認する</td></tr>
+          <tr><td><strong>解答後も設問文が消えないようにする</strong></td><td>正誤は色で分かる。英文と訳を同一画面で照合したい</td></tr>
+          <tr><td>ページ送りを画面下部に固定</td><td>問題ごとに高さが変わり、ボタンが上下に動いていた</td></tr>
+          <tr><td>次の問題へ進むと自動でページ最上部に戻る</td><td>長い解説を読んだ位置のまま次の設問が始まっていた</td></tr>
+          <tr><td>正誤の記録、誤答だけの絞り込み、復習フラグ</td><td>弱点だけを回せるようにする</td></tr>
+          <tr><td>ドメイン別・形式別の正答率集計</td><td>次に何をやるかを数字で決める</td></tr>
+          <tr><td>記録の書き出しと読み込み</td><td>端末をまたいで持ち運ぶ</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>自分の学習動作に合わせて道具を変えられる</strong>のが、この方法の一番の利点です。</p>
+  </div>
+
+  <div class="step">
+    <span class="n">04</span>
+    <h3>問題の質が悪ければ作り直させる</h3>
+    <p>最初に生成された問題は<strong>知識確認型（用語や数値を直接問う形）に偏っていました</strong>。一方、公式ガイドに載っているサンプル問題は3問とも<strong>業務シナリオを提示して「最も適切な対応は？」を問う形</strong>でした。</p>
+    <p>そこで<strong>シナリオベースに作り直させました</strong>。生成された問題をそのまま信じず、<strong>公式サンプルと形を突き合わせる</strong>工程が要ります。</p>
+    <p>自分の集計でも、シナリオ型と知識確認型で正答率が大きく割れていたので、この2つを分けて記録したことが弱点の特定に直結しました。</p>
+  </div>
+
+  <div class="step">
+    <span class="n">05</span>
+    <h3>解説が足りなければ公式ドキュメントを参照させて具体例を出させる</h3>
+    <p>解説を読んで腑に落ちない問題は、<strong>公式ドキュメントを参照したうえで具体例を出すよう追加で依頼</strong>しました。</p>
+    <p>抽象的な説明だけでは覚えられませんが、実際のリクエスト JSON やコード片を見ると一度で入ります。<strong>ここは対話でしかできない部分</strong>で、既製の問題集に対する明確な優位点です。</p>
+  </div>
+
+  <div class="step">
+    <span class="n">06</span>
+    <h3>分からない英単語はその場で聞き、まとめさせる</h3>
+    <p>試験は英語のみです。読んでいて引っかかった単語や表現は<strong>その場で意味と使われ方を聞き</strong>、ある程度たまった時点で<strong>まとめのページを作らせました</strong>。</p>
+    <p>単語帳を買うのではなく、<strong>自分が実際に詰まった語だけ</strong>が集まるので無駄がありません。</p>
+  </div>
+
+  <div class="step">
+    <span class="n">07</span>
+    <h3>結果をもとに復習ノートを作らせる</h3>
+    <p>解答記録を書き出して渡すと、Claude が<strong>どこを落としているかを集計し、復習ノートにまとめてくれます</strong>。</p>
+    <p>私の場合、落とした知識確認型の問題は<strong>たった9個の事実</strong>に集約されました。それを1ページにまとめてもらい、試験当日の朝はそれだけを読みました。</p>
+    <p><strong>「どこが弱いか」を人間が探さなくていい</strong>のが効きます。</p>
+  </div>
+
+  <h2><span class="num">Section 3</span>何に重きを置いたか</h2>
+  <p class="pull">陳腐化しやすい技術やコードの詳細ではなく、全体を貫く原則。</p>
+  <p>パラメータ名や数値は仕様変更で変わりますし、覚えても応用が利きません。それより、範囲全体に繰り返し現れる考え方を押さえるほうが、初見の問題に対応できます。</p>
+
+  <div class="box">
+    <h4>ここも Claude にやらせた</h4>
+    <p>公式ガイドの25サブスキルの説明文を読ませたうえで、「<strong>ここに繰り返し現れる設計思想をまとめて</strong>」と依頼しています。25項目を人間が読み比べて共通点を見つけるより速く、<strong>根拠となる記述も併せて示させれば裏取りもできます</strong>。</p>
+  </div>
+
+  <p>出てきたのは次の7つです。</p>
+  <ol class="principles">
+    <li>
+      <b>強制力を持つのはモデルではなくコード</b>
+      プロンプトでの指示は保証になりません。モデルが出すのは「実行要求」であって実行ではないので、ガードレールも承認も、実際に動かす自分のコード側に置きます。
+    </li>
+    <li>
+      <b>入ってくるものも、出ていくものも信頼しない</b>
+      ユーザー入力・検索結果・ツールの戻り値だけでなく、<strong>モデルの出力自体も検証対象</strong>です。形式が整っているほど正しく見えてしまうのが罠になります。
+    </li>
+    <li>
+      <b>決定論が必要な場所を見極める</b>
+      同じ入力が同じ出力を返さないのは仕様であって不具合ではありません。決定性は「文字列が一致すること」ではなく、検証と制約によって作ります。
+    </li>
+    <li>
+      <b>再現性はバージョン管理から来る</b>
+      プロンプトとモデル ID は本番コードです。バージョンを固定し、何がどの構成で動いたかを記録して初めて、後から原因を追えます。
+    </li>
+    <li>
+      <b>コンテキストは容量ではなく品質</b>
+      ウィンドウを広げるのは解決になりません。<strong>入れない・削る・隔離する</strong>の3つが手段です。
+    </li>
+    <li>
+      <b>最小権限を、あらゆる軸で</b>
+      権限だけでなく、<strong>渡すツール・入れるコンテキスト・発行する鍵のスコープ</strong>すべてに効きます。最も強い制約は「そのツールを渡さないこと」です。
+    </li>
+    <li>
+      <b>汎用ソフトウェア工学は免除されない</b>
+      AI アプリケーションであっても、まずソフトウェアとして正しいことが求められます。Section 0 の3層構造は、この原則の裏返しでもあります。
+    </li>
+  </ol>
+  <p>こうした原則は<strong>試験が終わっても業務で使えます</strong>。実際、合格そのものより、この整理ができたことのほうが価値がありました。</p>
+
+  <h2><span class="num">Section 4</span>6日間の流れ</h2>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>日</th><th>やったこと</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1日目</td><td>受験科目を決定。Claude に問題集の初版（HTML）を作らせる</td></tr>
+        <tr><td class="n">2日目</td><td>公開されているサンプル問題と形式を突き合わせ、シナリオ型に作り直させる</td></tr>
+        <tr><td class="n">3日目</td><td>通しで解く。ドメイン別・形式別に集計し、弱点に絞った問題を追加生成</td></tr>
+        <tr><td class="n">4日目</td><td><strong>公式 Exam Guide PDF を入手。</strong>25サブスキルの配点どおりに問題を追加。複数選択形式にも対応させる</td></tr>
+        <tr><td class="n">5日目</td><td>通しで解く。英単語のまとめページと、原則の整理ページを作らせる</td></tr>
+        <tr><td class="n">6日目</td><td>通しで解く。結果をもとに直前チェック用の復習ノートを作らせる</td></tr>
+        <tr><td class="n">7日目</td><td>朝に復習ノートを通読。午後に受験 → <strong>924 / 1000</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>最終的に問題数は 211 問になりました。<strong>平日は 30分〜1時間、直前の土日に集中</strong>という配分です。</p>
+  <p>なお受験形式は、<strong>自宅の環境設定が面倒だったのでテストセンター</strong>を選びました。オンライン監督（OnVUE）だと仮想マシンや VPN の制限、部屋のスキャンなど事前準備が必要になります。</p>
+
+  <h2><span class="num">Section 5</span>他の資格でも使えるか</h2>
+  <p><strong>使えます。</strong>この方法が依存しているのは次の2つだけです。</p>
+  <ol>
+    <li><strong>公式の出題範囲（できれば配点付き）が公開されていること</strong></li>
+    <li><strong>公式のサンプル問題が数問でもあること</strong>（生成した問題の形を合わせる基準になる）</li>
+  </ol>
+  <p>多くのベンダー資格はこの2つを公開しています。あとは冒頭のループを同じように回すだけです。</p>
+  <p class="pull">新しすぎて問題集が存在しない資格ほど、この方法の価値が上がります。</p>
+
+  <h2><span class="num">Section 6</span>注意</h2>
+  <div class="box">
+    <h4>守秘義務</h4>
+    <p><strong>試験内容には守秘義務（NDA）があります。</strong>受験前に同意を求められ、問題・選択肢・シナリオの開示は禁止されています。ここに書いたのは<strong>公開情報と学習方法だけ</strong>で、実際の出題内容は含みません。</p>
+  </div>
+  <ul>
+    <li>生成された問題は<strong>本番の問題ではありません</strong>。あくまで範囲を網羅するための練習材料です</li>
+    <li>資格の<strong>有効期限は12ヶ月</strong>。期限内なら Partner Academy の無料アセスメントで更新できます</li>
+    <li>試験仕様は更新されます。<strong>受験前に公式 PDF の最新版で確認してください</strong></li>
+  </ul>
+
+  <h2><span class="num">Section 7</span>試験仕様<span style="font-family:var(--mono);font-size:.68rem;color:var(--faint);letter-spacing:.1em;font-weight:400;"> 2026年7月時点 / v1.0</span></h2>
+  <div class="tblwrap">
+    <table>
+      <tbody>
+        <tr><td class="n">問題数</td><td>53問</td></tr>
+        <tr><td class="n">時間</td><td>120分</td></tr>
+        <tr><td class="n">形式</td><td>単一選択および複数選択（選ぶ個数は各問に明記される）</td></tr>
+        <tr><td class="n">合格</td><td>スケールスコア 720（100〜1000）</td></tr>
+        <tr><td class="n">受験料</td><td>$125</td></tr>
+        <tr><td class="n">配信</td><td>オンライン監督（OnVUE）またはテストセンター</td></tr>
+        <tr><td class="n">有効期限</td><td>12ヶ月</td></tr>
+        <tr><td class="n">言語</td><td>英語のみ</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>ドメイン配点</h3>
+  <div class="domains">
+    <div><span>Applications and Integration</span><b>33.1%</b></div>
+    <div><span>Model Selection and Optimization</span><b>16.8%</b></div>
+    <div><span>Agents and Workflows</span><b>14.7%</b></div>
+    <div><span>Prompt and Context Engineering</span><b>11.0%</b></div>
+    <div><span>Tools and MCPs</span><b>10.6%</b></div>
+    <div><span>Security and Safety</span><b>8.1%</b></div>
+    <div><span>Claude Code</span><b>3.1%</b></div>
+    <div><span>Eval, Testing, and Debugging</span><b>2.6%</b></div>
+  </div>
+  <p>各ドメインはさらにサブスキルに分かれ、<strong>25個それぞれに配点があります</strong>。対策の解像度はここで決まるので、必ず公式 PDF を確認してください。</p>
+
+  <footer>
+    記載内容は Anthropic 公式の Claude Certified Developer – Foundations Exam Guide（v1.0, 2026年7月）などの公開情報と、筆者自身の学習方法に基づきます。実際の出題内容は含みません。試験仕様は変更される場合があるため、受験前に公式ドキュメントの最新版を確認してください。
+  </footer>
+</div>
+</body>
+</html>
